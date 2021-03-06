@@ -1,6 +1,6 @@
 # Robust MuZero
 
-A Robust variant of MuZero
+A robust variant of MuZero
 
 Authors: Masahiro Hayashi, Bakr Ouairem
 
