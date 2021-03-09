@@ -3,7 +3,14 @@
 Author: Masahiro Hayashi
 
 This script defines the network architectures for MuZero, which consists of
-3 components: Representation, Dynamic, and Prediction
+3 components: Representation, Dynamic, and Prediction. The main MuZero network
+can perform recurrent rollouts as described in the orginal paper.
+
+    https://arxiv.org/pdf/1911.08265.pdf
+
+This implementation is modified from the following MuZero implementation:
+
+    https://github.com/werner-duvaud/muzero-general
 
 The file is organized into 3 sections:
     - Conversion tools
@@ -34,10 +41,10 @@ def support_to_scalar(logits, support_size):
         .to(device=probabilities.device)
     )
     x = torch.sum(support * probabilities, dim=1, keepdim=True)
-
+    eps = 0.001
     # Invert the scaling (defined in https://arxiv.org/abs/1805.11593)
     x = torch.sign(x) * (
-        ((torch.sqrt(1 + 4 * 0.001 * (torch.abs(x) + 1 + 0.001)) - 1) / (2 * 0.001))
+        ((torch.sqrt(1 + 4 * eps * (torch.abs(x) + 1 + eps)) - 1) / (2 * eps))
         ** 2
         - 1
     )
@@ -49,7 +56,8 @@ def scalar_to_support(x, support_size):
     See paper appendix Network Architecture
     """
     # Reduce the scale (defined in https://arxiv.org/abs/1805.11593)
-    x = torch.sign(x) * (torch.sqrt(torch.abs(x) + 1) - 1) + 0.001 * x
+    eps = 0.001
+    x = torch.sign(x) * (torch.sqrt(torch.abs(x) + 1) - 1) + eps * x
 
     # Encode on a vector
     x = torch.clamp(x, -support_size, support_size)
@@ -257,7 +265,8 @@ class RepresentationNet(nn.Module):
     ):
         self.name = 'Representation Network'
         super(RepresentationNet, self).__init__()
-        in_dim = (observation_shape[0] + 1) * n_observations
+        # in_dim = (observation_shape[0] + 1) * n_observations + 3
+        in_dim = observation_shape[0] * (1 + n_observations) + n_observations
         self.use_downsample = downsample
         if self.use_downsample:
             self.downsample = Downsample(in_dim, out_dim)
@@ -291,14 +300,11 @@ class DynamicsNet(nn.Module):
         # reward
         self.conv_r = torch.nn.Conv2d(dim, reward_dim, 1)
         self.conv_dim = conv_dim
-        self.fc = MLP(
-            conv_dim, support_dim, fc_reward_h_dim
-        )
+        self.fc = MLP(conv_dim, support_dim, fc_reward_h_dim)
 
     def forward(self, s_old):
         s_old = self.convblock(s_old)
         s_old = self.resblocks(s_old)
-        s_old = self.conv_r(s_old)
         s_new = s_old
         r = self.conv_r(s_old)
         r = r.view(-1, self.conv_dim)
@@ -347,7 +353,7 @@ class PredictionNet(nn.Module):
 ###############################################################################
 # Main MuZero Architecture
 ###############################################################################
-class MuZeroNetwork(AbstractNetwork):
+class MuZeroResidualNetwork(AbstractNetwork):
     """MuZero Network
     """
     def __init__(
@@ -415,10 +421,10 @@ class MuZeroNetwork(AbstractNetwork):
         """Calculate the output dimension of a convolutional block
         """
         if self.downsample:
-            dim *= math.ceil(observation_shape[1] / 16)
-            dim *= math.ceil(observation_shape[2] / 16)
+            dim *= math.ceil(self.observation_shape[1] / 16)
+            dim *= math.ceil(self.observation_shape[2] / 16)
         else:
-            dim *= observation_shape[1] * observation_shape[2]
+            dim *= self.observation_shape[1] * self.observation_shape[2]
         return dim
 
     def get_bound(self, s, bound):
@@ -474,34 +480,84 @@ class MuZeroNetwork(AbstractNetwork):
         policy_logits, value = self.prediction(next_encoded_state)
         return value, reward, policy_logits, next_encoded_state
 
+class MuZeroNetwork:
+    def __new__(cls, config):
+        # if config.network == "fullyconnected":
+        #     return MuZeroFullyConnectedNetwork(
+        #         config.observation_shape,
+        #         config.stacked_observations,
+        #         len(config.action_space),
+        #         config.encoding_size,
+        #         config.fc_reward_layers,
+        #         config.fc_value_layers,
+        #         config.fc_policy_layers,
+        #         config.fc_representation_layers,
+        #         config.fc_dynamics_layers,
+        #         config.support_size,
+        #     )
+        if config.network == "resnet":
+            return MuZeroResidualNetwork(
+                config.observation_shape,
+                config.stacked_observations,
+                len(config.action_space),
+                config.blocks,
+                config.channels,
+                config.reduced_channels_reward,
+                config.reduced_channels_value,
+                config.reduced_channels_policy,
+                config.resnet_fc_reward_layers,
+                config.resnet_fc_value_layers,
+                config.resnet_fc_policy_layers,
+                config.support_size,
+                config.downsample,
+            )
+        else:
+            raise NotImplementedError(
+                'The network parameter should be "fullyconnected" or "resnet".'
+            )
+
 ###############################################################################
 # For testing
 ###############################################################################
 if __name__ == '__main__':
-    layers = [0, 4, 8, 12, 16]
-    O = torch.rand((1, 128, 96, 96))
+    # parameters
+    # observation_shape = (3, 96, 96)
+    # n_observations = 32
+    # n_blocks = 16
+    # n_actions = 4
+    # dim = 256
+    # reward_dim = 256
+    # value_dim = 256
+    # policy_dim = 256
+    # fc_reward_h_dim = [256, 256]
+    # fc_policy_h_dim = [256, 256]
+    # fc_value_h_dim = [256, 256]
+    # support_size = 300
+    # downsample = 'resnet'
     observation_shape = (3, 96, 96)
-    n_observations = 32
-    n_blocks = 16
+    n_observations = 0
+    n_blocks = 2
     n_actions = 4
-    dim = 256
-    reward_dim = 256
-    value_dim = 256
-    policy_dim = 256
-    fc_reward_h_dim = [256, 256]
-    fc_policy_h_dim = [256, 256]
-    fc_value_h_dim = [256, 256]
-    support_size = 300
+    dim = 16
+    reward_dim = 4
+    value_dim = 4
+    policy_dim = 4
+    fc_reward_h_dim = [16]
+    fc_policy_h_dim = [16]
+    fc_value_h_dim = [16]
+    support_size = 10
     downsample = 'resnet'
-
-    downsample = True
-    MuZeroNet = MuZeroNetwork(
+    # MuZero main network testing
+    MuZeroNet = MuZeroResidualNetwork(
         observation_shape, n_observations, n_actions, n_blocks, dim,
         reward_dim, value_dim, policy_dim,
         fc_reward_h_dim, fc_value_h_dim, fc_policy_h_dim,
         support_size, downsample
     )
     K = 5
+    # O = torch.rand((1, 128, 96, 96))
+    in_dim = 3 * (n_observations+1) + n_observations
+    O = torch.rand((1, in_dim, 96, 96))
     v, r, p, s = MuZeroNet.initial_inference(O)
     print('value', v.shape)
     print('reward', r.shape)
@@ -512,9 +568,13 @@ if __name__ == '__main__':
     for _ in range(K-1):
         v_k, r_k, p_k, s_k = MuZeroNet.recurrent_inference(s_k, a)
         a = torch.ones((1, 1)) * torch.argmax(p)
-
     print('value_k', v_k.shape)
     print('reward_k', r_k.shape)
     print('policy_k', p_k.shape)
     print('state_k', s_k.shape)
-
+    # s = torch.rand((1,17, 6, 6))
+    # dyna_net = DynamicsNet(n_blocks, dim, reward_dim, fc_reward_h_dim,
+    #     support_size*2+1, 4*6*6)
+    # r, s = dyna_net(s)
+    # print(r.size())
+    # print(s.size())
