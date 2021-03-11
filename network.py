@@ -261,7 +261,7 @@ class RepresentationNet(nn.Module):
     """
     def __init__(
         self, observation_shape, n_observations,
-        n_block=16, out_dim=256, downsample=True
+        n_blocks=16, out_dim=256, downsample=True
     ):
         self.name = 'Representation Network'
         super(RepresentationNet, self).__init__()
@@ -272,13 +272,13 @@ class RepresentationNet(nn.Module):
             self.downsample = Downsample(in_dim, out_dim)
         else:
             self.convblock = ConvBnReLU(in_dim, out_dim)
-        self.resblocks = ResidualBlocks(16, out_dim, out_dim)
+        self.resblocks = ResidualBlocks(n_blocks, out_dim, out_dim)
 
     def forward(self, x):
         if self.use_downsample:
             x = self.downsample(x)
         else:
-            x = self.convblock()
+            x = self.convblock(x)
         out = self.resblocks(x)
         return out
 
@@ -520,7 +520,7 @@ class MuZeroNetwork:
 # For testing
 ###############################################################################
 if __name__ == '__main__':
-    # parameters
+    # # Deepmind Atari hyperparameters
     # observation_shape = (3, 96, 96)
     # n_observations = 32
     # n_blocks = 16
@@ -534,6 +534,8 @@ if __name__ == '__main__':
     # fc_value_h_dim = [256, 256]
     # support_size = 300
     # downsample = 'resnet'
+
+    # light Atari hyperparameters
     observation_shape = (3, 96, 96)
     n_observations = 0
     n_blocks = 2
@@ -556,7 +558,7 @@ if __name__ == '__main__':
     )
     K = 5
     # O = torch.rand((1, 128, 96, 96))
-    in_dim = 3 * (n_observations+1) + n_observations
+    in_dim = (observation_shape[0]+1) * n_observations + observation_shape[0]
     O = torch.rand((1, in_dim, 96, 96))
     v, r, p, s = MuZeroNet.initial_inference(O)
     print('value', v.shape)
