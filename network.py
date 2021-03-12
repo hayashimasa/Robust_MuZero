@@ -265,7 +265,6 @@ class RepresentationNet(nn.Module):
     ):
         self.name = 'Representation Network'
         super(RepresentationNet, self).__init__()
-        # in_dim = (observation_shape[0] + 1) * n_observations + 3
         in_dim = observation_shape[0] * (1 + n_observations) + n_observations
         self.use_downsample = downsample
         if self.use_downsample:
@@ -289,7 +288,7 @@ class DynamicsNet(nn.Module):
     """
     def __init__(
         self, n_blocks=16, dim=256,
-        reward_dim=256, fc_reward_h_dim=256,
+        reward_dim=256, fc_reward_h_dim=[256],
         support_dim=2*300+1, conv_dim=256*6*6,
     ):
         self.name = 'Dynamics Network'
@@ -540,7 +539,7 @@ if __name__ == '__main__':
     n_observations = 0
     n_blocks = 2
     n_actions = 4
-    dim = 16
+    dim = 32
     reward_dim = 4
     value_dim = 4
     policy_dim = 4
