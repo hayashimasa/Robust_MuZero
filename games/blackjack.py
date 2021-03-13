@@ -27,7 +27,7 @@ class MuZeroConfig:
         self.observation_shape = (3,3,3) # Dimensions of the game observation, must be 3D (channel, height, width). For a 1D array, please reshape it to (1, 1, length of array)
         self.action_space = list(range(2)) # Fixed list of all possible actions. You should only edit the length
         self.players = list(range(1)) # List of players. You should only edit the length
-        self.stacked_observations = 0 # Number of previous observations and previous actions to add to the current observation
+        self.stacked_observations = 4 # Number of previous observations and previous actions to add to the current observation
 
         # Evaluate
         self.muzero_player = 0 # Turn Muzero begins to play (0: MuZero plays first, 1: MuZero plays second)
@@ -40,7 +40,7 @@ class MuZeroConfig:
         self.selfplay_on_gpu = False
         self.max_moves = 21 # Maximum number of moves if game is not finished before
         self.num_simulations = 21 # Number of future moves self-simulated
-        self.discount = 1 # Chronological discount of the reward
+        self.discount = 0.999 # Chronological discount of the reward
         self.temperature_threshold = None  # Number of moves before dropping the temperature given by visit_softmax_temperature_fn to 0 (ie selecting the best action). If None, visit_softmax_temperature_fn is used every time
 
         # Root prior exploration noise
@@ -59,7 +59,7 @@ class MuZeroConfig:
 
         # Residual Network
         self.downsample = False  # Downsample observations before representation network, False / "CNN" (lighter) / "resnet" (See paper appendix Network Architecture)
-        self.blocks = 2  # Number of blocks in the ResNet
+        self.blocks = 4  # Number of blocks in the ResNet
         self.channels = 32  # Number of channels in the ResNet
         self.reduced_channels_reward = 32  # Number of channels in reward head
         self.reduced_channels_value = 32  # Number of channels in value head
@@ -81,8 +81,8 @@ class MuZeroConfig:
         ### Training
         self.results_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../results", os.path.basename(__file__)[:-3], datetime.datetime.now().strftime("%Y-%m-%d--%H-%M-%S"))  # Path to store the model weights and TensorBoard logs
         self.save_model = True  # Save the checkpoint in results_path as model.checkpoint
-        self.training_steps = 15000  # Total number of training steps (ie weights update according to a batch)
-        self.batch_size = 64  # Number of parts of games to train on at each training step
+        self.training_steps = 50000  # Total number of training steps (ie weights update according to a batch)
+        self.batch_size = 128  # Number of parts of games to train on at each training step
         self.checkpoint_interval = 10  # Number of training steps before using the model for self-playing
         self.value_loss_weight = 0.25  # Scale the value loss to avoid overfitting of the value function, paper recommends 0.25 (See paper appendix Reanalyze)
         self.train_on_gpu = torch.cuda.is_available()  # Train on GPU if available
@@ -103,7 +103,7 @@ class MuZeroConfig:
         self.num_unroll_steps = 20  # Number of game moves to keep for every batch element
         self.td_steps = 50  # Number of steps in the future to take into account for calculating the target value
         self.PER = True  # Prioritized Replay (See paper appendix Training), select in priority the elements in the replay buffer which are unexpected for the network
-        self.PER_alpha = 0.5  # How much prioritization is used, 0 corresponding to the uniform case, paper suggests 1
+        self.PER_alpha = 1  # How much prioritization is used, 0 corresponding to the uniform case, paper suggests 1
 
         # Reanalyze (See paper appendix Reanalyse)
         self.use_last_model_value = True  # Use the last model to provide a fresher, stable n-step value (See paper appendix Reanalyze)
