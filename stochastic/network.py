@@ -374,6 +374,7 @@ class MuZeroResidualNetwork(AbstractNetwork):
     ):
         super().__init__()
         self.action_space_size = n_actions
+        self.support_size = support_size
         self.full_support_size = 2 * support_size + 1
         self.observation_shape = observation_shape
         self.downsample = downsample
@@ -461,6 +462,10 @@ class MuZeroResidualNetwork(AbstractNetwork):
         action_one_hot /= self.action_space_size
         s_a = torch.cat((encoded_state, action_one_hot), dim=1)
         reward, next_encoded_state = self.dynamics_network(s_a)
+        next_encoded_state = torch.normal(next_encoded_state, 1)
+        reward = support_to_scalar(reward, self.support_size)
+        reward = torch.normal(reward, 1)
+        reward = scalar_to_support(reward, self.support_size)
         next_encoded_state_normalized = self.scale(next_encoded_state)
         return reward, next_encoded_state_normalized
 
@@ -477,10 +482,6 @@ class MuZeroResidualNetwork(AbstractNetwork):
 
     def recurrent_inference(self, encoded_state, action):
         reward, next_encoded_state = self.dynamics(encoded_state, action)
-        next_encoded_state = torch.normal(next_encoded_state, 1)
-        reward = support_to_scalar(reward)
-        reward = torch.normal(reward, 1)
-        reward = scalar_to_support(reward, self.full_support_size)
         policy_logits, value = self.prediction(next_encoded_state)
         return value, reward, policy_logits, next_encoded_state
 
