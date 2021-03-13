@@ -3,3 +3,4 @@ muzero_general_master/
 test.py
 __pycache__/
 games/breakout_big.py
+results/
