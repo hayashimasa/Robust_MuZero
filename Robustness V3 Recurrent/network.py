@@ -467,7 +467,7 @@ class MuZeroResidualNetwork(AbstractNetwork):
         reward = support_to_scalar(reward, self.support_size)
         reward = torch.normal(reward, 1)
         reward = scalar_to_support(reward, self.support_size)
-        reward = torch.reshape(reward, (list(reward.size())[0] , list(reward.size())[2] )) 
+        reward = torch.reshape(reward, (reward.size()[0] , reward.size()[2] )) 
         return reward, next_encoded_state_normalized, next_hidden_state
 
     def initial_inference(self, observation):
