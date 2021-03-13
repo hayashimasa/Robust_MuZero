@@ -1,6 +1,6 @@
 """Network architectures for MuZero
 
-Author: Masahiro Hayashi
+Author: Masahiro Hayashi - Bakr Ouairem
 
 This script defines the network architectures for MuZero, which consists of
 3 components: Representation, Dynamic, and Prediction. The main MuZero network
