@@ -258,7 +258,7 @@ class SelfPlay:
 
         return action
 
-RobustMCTS(MCTS):
+class RobustMCTS(MCTS):
 
     def __init__(self, config):
         super(RobustMCTS, self).__init__(config)
