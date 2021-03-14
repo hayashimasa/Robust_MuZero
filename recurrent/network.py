@@ -1,4 +1,4 @@
-"""Network architectures for MuZero
+"""Network architectures for recurrent MuZero
 
 Author: Masahiro Hayashi
 
@@ -7,6 +7,12 @@ This script defines the network architectures for MuZero, which consists of
 can perform recurrent rollouts as described in the orginal paper.
 
     https://arxiv.org/pdf/1911.08265.pdf
+
+The dynamics has been modified to be stochastic. The stochastic dynamics is
+based on the recurrent state space model, which has a deterministic hidden
+state path, described in the following paper.
+
+    https://arxiv.org/pdf/1811.04551.pdf
 
 This implementation is modified from the following MuZero implementation:
 
@@ -466,7 +472,7 @@ class MuZeroResidualNetwork(AbstractNetwork):
         next_encoded_state_normalized = self.scale(next_encoded_state)
         reward = support_to_scalar(reward, support_size)
         reward = torch.normal(reward, 1)
-        reward = scalar_to_support(reward, support_size)
+        reward = scalar_to_support(reward, support_size).squeeze(1)
         return reward, next_encoded_state_normalized, next_hidden_state
 
     def initial_inference(self, observation):

@@ -1,12 +1,14 @@
-"""Network architectures for MuZero
+"""Network architectures for stochastic MuZero
 
 Author: Masahiro Hayashi
 
 This script defines the network architectures for MuZero, which consists of
-3 components: Representation, Dynamic, and Prediction. The main MuZero network
+3 components: Representation, Dynamics, and Prediction. The main MuZero network
 can perform recurrent rollouts as described in the orginal paper.
 
     https://arxiv.org/pdf/1911.08265.pdf
+
+The dynamics has been modified to be stochastic.
 
 This implementation is modified from the following MuZero implementation:
 
@@ -465,7 +467,7 @@ class MuZeroResidualNetwork(AbstractNetwork):
         next_encoded_state = torch.normal(next_encoded_state, 1)
         reward = support_to_scalar(reward, self.support_size)
         reward = torch.normal(reward, 1)
-        reward = scalar_to_support(reward, self.support_size)
+        reward = scalar_to_support(reward, self.support_size).squeeze(1)
         next_encoded_state_normalized = self.scale(next_encoded_state)
         return reward, next_encoded_state_normalized
 
